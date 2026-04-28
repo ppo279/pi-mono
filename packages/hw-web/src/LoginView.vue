@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import { apiLogin, setToken } from "./api";
+import { apiLogin } from "./api";
 
 const username = ref("");
 const password = ref("");

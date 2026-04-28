@@ -76,9 +76,16 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface RegisterRequest {
+  username: string;
+  password: string;
+  role: "admin" | "operator" | "viewer";
+}
+
 export interface LoginResponse {
   token: string;
   expiresIn: number;
+  mustChangePassword: boolean;
 }
 
 export interface AssessRequest {

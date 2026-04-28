@@ -3,6 +3,7 @@ import { jwtVerify, SignJWT } from "jose";
 import { getCookie } from "hono/cookie";
 import type { LoginRequest } from "./types.js";
 import { getUserByUsername, verifyPassword, createSession, deleteSession } from "./user.js";
+import { checkRateLimit } from "./rate-limit.js";
 
 function getEnv(key: string): string {
 	const val = process.env[key];
@@ -19,11 +20,11 @@ async function getSecret(): Promise<Uint8Array> {
 	return new TextEncoder().encode(secret);
 }
 
-export async function verifyToken(token: string): Promise<{ sub: string; role: string }> {
+export async function verifyToken(token: string): Promise<{ sub: string; role: string; jti?: string }> {
 	try {
 		const secret = await getSecret();
 		const payload = await jwtVerify(token, secret);
-		return payload.payload as { sub: string; role: string };
+		return payload.payload as { sub: string; role: string; jti?: string };
 	} catch {
 		throw new Error("Unauthorized");
 	}
@@ -45,11 +46,17 @@ export async function login(req: LoginRequest): Promise<{ token: string; expires
 
 export function registerAuthRoutes(app: Hono): void {
 	app.post("/api/auth/login", async (c) => {
+		const ip = c.req.header("x-forwarded-for") ?? "unknown";
+		const { allowed } = checkRateLimit(ip);
+		if (!allowed) {
+			c.header("Retry-After", "300");
+			return c.json({ error: "Too many requests" }, 429);
+		}
 		const body = await c.req.json<LoginRequest>();
 		try {
 			const result = await login(body);
 			const expiresAt = new Date(Date.now() + result.expiresIn * 1000).toUTCString();
-			c.header("Set-Cookie", `hw_token=${result.token}; HttpOnly; SameSite=Strict; Path=/; Expires=${expiresAt}`);
+			c.header("Set-Cookie", `hw_token=${result.token}; HttpOnly; Secure; SameSite=Strict; Path=/; Expires=${expiresAt}`);
 			return c.json(result);
 		} catch (err) {
 			return c.json({ error: err instanceof Error ? err.message : "Login failed" }, 401);
@@ -59,9 +66,12 @@ export function registerAuthRoutes(app: Hono): void {
 	app.post("/api/auth/logout", async (c) => {
 		const token = getCookie(c, "hw_token");
 		if (token) {
-			try { deleteSession(token); } catch { /* ignore */ }
+			try {
+				const payload = await verifyToken(token);
+				if (payload.jti) deleteSession(payload.jti);
+			} catch { /* ignore */ }
 		}
-		c.header("Set-Cookie", "hw_token=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0");
+		c.header("Set-Cookie", "hw_token=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0");
 		return c.json({ ok: true });
 	});
 }
