@@ -12,6 +12,9 @@ packages/*/dist-firefox/
 # Environment
 .env
 
+# Data
+data/*.db
+
 # Editor files
 .vscode/
 .zed/
