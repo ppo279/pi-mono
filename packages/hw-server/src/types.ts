@@ -1,3 +1,36 @@
+// ─── 用户与会话类型 ────────────────────────────────────────────────
+
+export interface User {
+  id: number;
+  username: string;
+  passwordHash: string;
+  role: "admin" | "operator" | "viewer";
+  createdAt: number;
+  mustChangePassword: 0 | 1;
+  enabled: 0 | 1;
+}
+
+export interface Session {
+  id: string;
+  userId: number;
+  expiresAt: number;
+}
+
+export interface UpdateUserRequest {
+  role?: "admin" | "operator" | "viewer";
+  enabled?: 0 | 1;
+  mustChangePassword?: 0 | 1;
+}
+
+export interface ChangePasswordRequest {
+  oldPassword: string;
+  newPassword: string;
+}
+
+export interface ResetPasswordRequest {
+  newPassword: string;
+}
+
 // ─── SSE 事件类型（与 hw-web 现有解析逻辑完全一致）───────────────
 
 export interface SSEStepEvent {
