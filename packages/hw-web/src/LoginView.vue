@@ -16,9 +16,13 @@ async function handleLogin() {
   loading.value = true;
   error.value = "";
   try {
-    const { token } = await apiLogin(username.value, password.value);
-    setToken(token);
-    emit("success");
+    const result = await apiLogin(username.value, password.value);
+    setToken(result.token);
+    if (result.mustChangePassword) {
+      window.location.href = "/#/change-password";
+    } else {
+      emit("success");
+    }
   } catch (err) {
     error.value = String(err);
   } finally {
