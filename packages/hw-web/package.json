@@ -1,0 +1,9 @@
+{
+  "name": "@mariozechner/pi-hw-web",
+  "version": "0.1.0",
+  "description": "Homework assessment frontend — Vue SPA",
+  "type": "module",
+  "dependencies": {
+    "vue-router": "^4.4.0"
+  }
+}

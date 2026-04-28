@@ -15,10 +15,16 @@
     "@hono/node-server": "^1.13.0",
     "hono": "^4.6.0",
     "jose": "^5.9.0",
-    "@mariozechner/pi-homework": "workspace:^"
+    "@mariozechner/pi-homework": "workspace:^",
+    "better-sqlite3": "^11.0.0",
+    "bcryptjs": "^2.4.3",
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/uuid": "^10.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
