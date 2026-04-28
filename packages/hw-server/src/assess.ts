@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import type { AssessRequest } from "./types.js";
 import { runPipeline } from "@mariozechner/pi-homework";
-import { verifyToken } from "./auth.js";
+import { authMiddleware } from "./middleware/auth.js";
+import { requireRole } from "./middleware/rbac.js";
 
 // ─── SSE helpers ────────────────────────────────────────────────────────
 
@@ -55,26 +56,12 @@ async function runPipelineWithEvents(
 
 export function registerAssessRoutes(app: Hono): void {
   // POST /api/assess/stream — requires JWT auth
-  app.post("/api/assess/stream", async (c) => {
-    // ── Auth check ──────────────────────────────────────────
-    const authHeader = c.req.header("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-    const token = authHeader.slice(7);
-    try {
-      await verifyToken(token);
-    } catch {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    // ── Parse request ──────────────────────────────────────
+  app.post("/api/assess/stream", authMiddleware, requireRole("operator"), async (c) => {
     const body = await c.req.json<AssessRequest>();
     if (!body.image || !body.grade || !body.subject) {
       return c.json({ error: "Missing required fields: image, grade, subject" }, 400);
     }
 
-    // ── Establish SSE stream (after auth/validation to avoid leaks) ──
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
 
