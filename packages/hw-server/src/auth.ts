@@ -1,8 +1,8 @@
 import type { Hono } from "hono";
-import { sign, verify } from "jose";
-import type { LoginRequest, LoginResponse } from "./types.js";
-
-// ─── Environment ────────────────────────────────────────────────────────
+import { jwtVerify, SignJWT } from "jose";
+import { getCookie } from "hono/cookie";
+import type { LoginRequest } from "./types.js";
+import { getUserByUsername, verifyPassword, createSession, deleteSession } from "./user.js";
 
 function getEnv(key: string): string {
 	const val = process.env[key];
@@ -10,59 +10,58 @@ function getEnv(key: string): string {
 	return val;
 }
 
-const ADMIN_USER = () => getEnv("HW_ADMIN_USER");
-const ADMIN_PASS = () => getEnv("HW_ADMIN_PASS");
 const JWT_SECRET = () => getEnv("HW_JWT_SECRET");
-const JWT_EXPIRES_IN = 86400; // 24 hours
-
-// ─── JWT helpers ───────────────────────────────────────────────────────
+const JWT_EXPIRES_IN = 86400;
 
 async function getSecret(): Promise<Uint8Array> {
 	const secret = JWT_SECRET();
-	if (secret.length < 32) {
-		throw new Error("HW_JWT_SECRET must be at least 32 characters");
-	}
+	if (secret.length < 32) throw new Error("HW_JWT_SECRET must be at least 32 characters");
 	return new TextEncoder().encode(secret);
 }
 
 export async function verifyToken(token: string): Promise<{ sub: string; role: string }> {
 	try {
-		const payload = await verify(token, await getSecret());
-		return payload as { sub: string; role: string };
+		const secret = await getSecret();
+		const payload = await jwtVerify(token, secret);
+		return payload.payload as { sub: string; role: string };
 	} catch {
 		throw new Error("Unauthorized");
 	}
 }
 
-// ─── Login handler ──────────────────────────────────────────────────────
-
-export async function login(req: LoginRequest): Promise<LoginResponse> {
-	if (req.username !== ADMIN_USER()) {
-		throw new Error("Invalid credentials");
-	}
-	if (req.password !== ADMIN_PASS()) {
-		throw new Error("Invalid credentials");
-	}
-
+export async function login(req: LoginRequest): Promise<{ token: string; expiresIn: number; mustChangePassword: boolean }> {
+	const user = getUserByUsername(req.username);
+	if (!user || !user.enabled) throw new Error("Invalid credentials");
+	if (!verifyPassword(user, req.password)) throw new Error("Invalid credentials");
+	const session = createSession(user.id);
 	const secret = await getSecret();
-	const token = await sign({ sub: req.username, role: "admin" }, secret, {
-		exp: Math.floor(Date.now() / 1000) + JWT_EXPIRES_IN,
-	});
-
-	return { token, expiresIn: JWT_EXPIRES_IN };
+	const token = await new SignJWT({ sub: String(user.id), role: user.role })
+		.setProtectedHeader({ alg: "HS256" })
+		.setExpirationTime(Math.floor(Date.now() / 1000) + JWT_EXPIRES_IN)
+		.setJti(session.id)
+		.sign(secret);
+	return { token, expiresIn: JWT_EXPIRES_IN, mustChangePassword: user.mustChangePassword === 1 };
 }
 
-// ─── Route registration ────────────────────────────────────────────────
-
 export function registerAuthRoutes(app: Hono): void {
-	// POST /api/auth/login
 	app.post("/api/auth/login", async (c) => {
 		const body = await c.req.json<LoginRequest>();
 		try {
 			const result = await login(body);
+			const expiresAt = new Date(Date.now() + result.expiresIn * 1000).toUTCString();
+			c.header("Set-Cookie", `hw_token=${result.token}; HttpOnly; SameSite=Strict; Path=/; Expires=${expiresAt}`);
 			return c.json(result);
 		} catch (err) {
-			return c.json({ error: err instanceof Error ? err.message : "Invalid credentials" }, 401);
+			return c.json({ error: err instanceof Error ? err.message : "Login failed" }, 401);
 		}
+	});
+
+	app.post("/api/auth/logout", async (c) => {
+		const token = getCookie(c, "hw_token");
+		if (token) {
+			try { deleteSession(token); } catch { /* ignore */ }
+		}
+		c.header("Set-Cookie", "hw_token=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0");
+		return c.json({ ok: true });
 	});
 }
