@@ -1,3 +1,4 @@
+import type { ReviewBlock } from "../server/llm/types.js";
 import { useState } from "react";
 import AnswerDisplay from "./components/AnswerDisplay.js";
 import ImageUploader from "./components/ImageUploader.js";
@@ -7,6 +8,7 @@ type AppState = "upload" | "review" | "answer";
 
 export interface ReviewData {
   sessionId: string;
+  blocks: ReviewBlock[];
   markdown: string;
   imageDataUrl: string;
 }
@@ -46,12 +48,15 @@ export default function App() {
     try {
       const data = (await apiFetch("/api/ocr", { image: imageDataUrl })) as {
         id: string;
+        blocks: ReviewBlock[];
         markdown: string;
+        originalImageDataUrl: string;
       };
       setReviewData({
         sessionId: data.id,
+        blocks: data.blocks,
         markdown: data.markdown,
-        imageDataUrl,
+        imageDataUrl: data.originalImageDataUrl,
       });
       setAppState("review");
     } catch (e) {
@@ -106,8 +111,8 @@ export default function App() {
       {appState === "review" && reviewData && (
         <div className="w-full max-w-2xl space-y-4">
           <QuestionDisplay
-            markdown={reviewData.markdown}
-            imageUrl={reviewData.imageDataUrl}
+            blocks={reviewData.blocks}
+            originalImageUrl={reviewData.imageDataUrl}
           />
           <div className="flex gap-3">
             <button

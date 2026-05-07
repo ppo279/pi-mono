@@ -1,6 +1,9 @@
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
+
+const safeUrlTransform = (url: string) =>
+  url.startsWith("data:") ? url : defaultUrlTransform(url);
 
 interface Props {
   answer: string;
@@ -14,6 +17,7 @@ export default function AnswerDisplay({ answer, reasoning }: Props) {
         <h2 className="text-lg font-bold text-green-600 mb-3">答案</h2>
         <div className="prose prose-green max-w-none">
           <ReactMarkdown
+            urlTransform={safeUrlTransform}
             remarkPlugins={[remarkMath]}
             rehypePlugins={[rehypeKatex]}
           >
@@ -27,6 +31,7 @@ export default function AnswerDisplay({ answer, reasoning }: Props) {
           <h2 className="text-lg font-bold text-blue-600 mb-3">解题过程</h2>
           <div className="prose prose-blue max-w-none">
             <ReactMarkdown
+              urlTransform={safeUrlTransform}
               remarkPlugins={[remarkMath]}
               rehypePlugins={[rehypeKatex]}
             >

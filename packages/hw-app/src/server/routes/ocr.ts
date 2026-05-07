@@ -34,7 +34,12 @@ app.post("/", async (c) => {
 		const client = createSiliconFlowClient(apiKey);
 		const result = await ocrImage(client, parsed.image);
 		const sessionId = randomUUID();
-		return c.json({ id: sessionId, markdown: result.markdown });
+		return c.json({
+			id: sessionId,
+			blocks: result.blocks,
+			markdown: result.markdown,
+			originalImageDataUrl: parsed.image,
+		});
 	} catch (err) {
 		// Distinguish rate limit from other errors
 		if (isOpenAIError(err) && err.status === 429) {
