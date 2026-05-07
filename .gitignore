@@ -23,6 +23,11 @@ data/*.db
 *.swo
 *~
 
+# Claude Code
+.claude/
+packages/.claude/
+.worktrees/
+
 # Package specific
 .npm/
 coverage/
