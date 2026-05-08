@@ -10,9 +10,11 @@
 |------|------|------|
 | `-p, --print` | 非交互模式，输出后退出 | 自动化必需 |
 | `--output-format <format>` | 输出格式：`text`, `json`, `stream-json` | 结构化解析 |
-| `--input-format <format>` | 输入格式：`text`, `stream-json` | 流式输入 |
+| `--input-format <format>` | 输入格式：`text`, `stream-json` | **必须用 `stream-json` 才能发送 JSON** |
 | `--no-session-persistence` | 不保存会话 | 每次独立运行 |
-| `--dangerously-skip-permissions` | 跳过所有权限检查 | 自动化必需 |
+| `--dangerously-skip-permissions` | 跳过所有权限检查（无需确认） | 自动化必需 |
+| `--allow-dangerously-skip-permissions` | 允许绕过权限（需手动开启） | 非自动化 |
+| `--replay-user-messages` | 将 stdin 消息回显到 stdout 用于确认 | **自动化必需**，需配合 `--input-format=stream-json` 和 `--output-format=stream-json` |
 | `--add-dir <directories>` | 允许访问的目录 | 工作区配置 |
 | `--name <name>` | Agent 显示名称 | 标识 |
 | `--model <model>` | 指定模型 | API 配置 |
@@ -44,6 +46,7 @@ const proc = spawn({
     '--input-format', 'stream-json',
     '--no-session-persistence',
     '--dangerously-skip-permissions',
+    '--replay-user-messages',
     '--add-dir', '/workspace',
     '--name', 'claude-dev',
   ],
@@ -120,4 +123,5 @@ Codex CLI 可能支持类似参数，但需要单独验证。
 
 1. **ANSI 转义码** — Claude Code 输出可能包含颜色代码，需要过滤
 2. **stderr** — stderr 用于错误输出，非 JSON 格式
-3. **PTY** — 可能需要 PTY 才能正常交互
+3. **PTY 不需要** — 使用 `-p` 模式配合 stdin/stdout pipe 时不需要 PTY
+4. **必须 `--replay-user-messages`** — 否则 Daemon 无法确认消息已被 Claude Code 接收

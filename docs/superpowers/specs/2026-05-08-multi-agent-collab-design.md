@@ -732,8 +732,7 @@ Options:
 
 - [Requirements Document](./requirements.md)
 - [CLI Agent Docs](./cli-agent.md)
-- [Slock.ai 架构研究](../research/2026-05-08-slock-research.md)
-- [pi-mono packages](../..packages/)
+- [pi-mono packages](../../packages/)
 
 ---
 
